@@ -1,0 +1,52 @@
+# Go
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+server
+server.exe
+
+# Тесты
+*.test
+*.out
+coverage.out
+coverage.html
+coverage.xml
+
+# База данных
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+data/
+
+# Логи
+*.log
+logs/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker
+docker-compose.override.yml
+
+# Окружение
+.env
+!.env.example
+
+# Временные файлы
+tmp/
+temp/
+*.tmp
+
+# Модули Go (не копируем, загружаются в контейнере)
+# go.mod и go.sum копируются отдельно для кэширования

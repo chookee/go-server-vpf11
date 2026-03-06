@@ -1,0 +1,64 @@
+# Бинарные файлы
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+server
+server.exe
+bin/
+dist/
+
+# Go
+*.go~
+*.test
+*.out
+coverage.txt
+go.work
+go.work.sum
+
+# Зависимости
+vendor/
+
+# Тестовая база данных
+test.db
+*.db
+
+# Переменные окружения
+.env
+.env.local
+.env.*.local
+
+# Временные файлы
+*.tmp
+*.log
+*.cache
+tmp/
+temp/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Docker
+docker-compose.override.yml
+.docker/
+
+# Сборка и артефакты
+build/
+artifacts/
+
+# Тестирование
+.coverage
+htmlcov/
+.pytest_cache/
+.tox/
+
+# macOS
+.DS_Store
+
+# Windows
+Thumbs.db

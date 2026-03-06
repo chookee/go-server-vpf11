@@ -1,0 +1,924 @@
+openapi: 3.1.0
+info:
+  title: Users API
+  description: |
+    # Users API — REST API для управления пользователями
+
+    Простое и надёжное API для создания, чтения, обновления и удаления пользователей.
+
+    ## Основные возможности
+
+    - ✅ Создание пользователей с валидацией
+    - ✅ Получение списка с пагинацией
+    - ✅ Поиск по ID
+    - ✅ Обновление данных
+    - ✅ Удаление
+    - ✅ Статистика приложения
+    - ✅ Health check для мониторинга
+
+    ## Аутентификация
+
+    В текущей версии аутентификация **не требуется**. Все эндпоинты публичные.
+
+    ## Формат данных
+
+    Все запросы и ответы используют **JSON**.
+
+    Обязательно указывайте заголовок:
+    ```
+    Content-Type: application/json
+    ```
+
+    ## Статусы ответов
+
+    | Код | Значение | Описание |
+    |-----|----------|----------|
+    | 200 | OK | Успешный запрос |
+    | 201 | Created | Ресурс создан |
+    | 400 | Bad Request | Ошибка валидации |
+    | 404 | Not Found | Ресурс не найден |
+    | 409 | Conflict | Конфликт (дубликат) |
+    | 415 | Unsupported Media Type | Неверный Content-Type |
+    | 429 | Too Many Requests | Превышен лимит запросов |
+    | 500 | Internal Server Error | Ошибка сервера |
+
+    ## Лимиты
+
+    - **Rate Limit:** 100 запросов в секунду на IP
+    - **Макс. размер тела:** 1 MB
+    - **Макс. длина имени:** 100 символов
+    - **Макс. размер страницы:** 100 записей
+
+    ## Версионирование
+
+    Текущая версия API: **v2** (указывается в версии spec, не в URL).
+
+    При изменении API обновляйте версию в `info.version`:
+    - **Major (2.0.0)** — ломающие изменения
+    - **Minor (2.1.0)** — новые эндпоинты/поля
+    - **Patch (2.0.1)** — исправления, уточнения
+
+  version: 2.0.0
+  contact:
+    name: Support
+    email: support@example.com
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: http://127.0.0.1:8080
+    description: Локальный сервер разработки
+  - url: http://localhost:8080
+    description: Локальный сервер (альтернативный)
+  - url: https://api.example.com/v2
+    description: Production сервер
+
+tags:
+  - name: Health
+    description: Проверка работоспособности сервиса
+  - name: Users
+    description: Операции с пользователями (CRUD)
+  - name: Stats
+    description: Статистика приложения
+
+paths:
+  /health:
+    get:
+      tags:
+        - Health
+      summary: Проверка работоспособности
+      description: |
+        Возвращает статус здоровья приложения.
+
+        Используйте этот эндпоинт для:
+        - Мониторинга доступности сервиса
+        - Kubernetes health probes
+        - Load balancer проверок
+
+        **Не требует аутентификации.**
+      operationId: healthCheck
+      responses:
+        '200':
+          description: Сервис работает нормально
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+              examples:
+                healthy:
+                  summary: Сервис здоров
+                  value:
+                    timestamp: '2026-03-05T12:00:00Z'
+                    data:
+                      status: healthy
+
+  /users:
+    get:
+      tags:
+        - Users
+      summary: Получить список пользователей
+      description: |
+        Возвращает отсортированный список всех пользователей.
+
+        **Сортировка:** новые пользователи первыми (по created_at DESC)
+
+        **Пагинация:**
+        - `page` — номер страницы (начинается с 1)
+        - `per_page` — количество записей на странице (1-100)
+
+        Если параметры не указаны, используется страница 1 с 10 записями.
+      operationId: getUsers
+      parameters:
+        - name: page
+          in: query
+          description: Номер страницы (начинается с 1)
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+          example: 1
+        - name: per_page
+          in: query
+          description: Количество записей на странице (максимум 100)
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+          example: 10
+      responses:
+        '200':
+          description: Успешный ответ со списком пользователей
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UsersListResponse'
+              examples:
+                withUsers:
+                  summary: Список с пользователями
+                  value:
+                    timestamp: '2026-03-05T12:00:00Z'
+                    data:
+                      users:
+                        - id: 3
+                          name: Charlie
+                          created_at: '2026-03-05T12:05:00Z'
+                        - id: 2
+                          name: Bob
+                          created_at: '2026-03-05T12:03:00Z'
+                        - id: 1
+                          name: Alice
+                          created_at: '2026-03-05T12:00:00Z'
+                      pagination:
+                        page: 1
+                        per_page: 10
+                        total: 3
+                        pages: 1
+                empty:
+                  summary: Пустой список
+                  value:
+                    timestamp: '2026-03-05T12:00:00Z'
+                    data:
+                      users: []
+                      pagination:
+                        page: 1
+                        per_page: 10
+                        total: 0
+                        pages: 1
+        '429':
+          $ref: '#/components/responses/RateLimitExceeded'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /add-user:
+    post:
+      tags:
+        - Users
+      summary: Создать нового пользователя
+      description: |
+        Создаёт нового пользователя с уникальным именем.
+
+        **Требования к имени:**
+        - Обязательно (не может быть пустым)
+        - Минимум 1 символ (после удаления пробелов)
+        - Максимум 100 символов
+        - Должно быть уникальным (регистр имеет значение)
+
+        **Важно:** Имя автоматически обрезается от пробелов по краям.
+      operationId: addUser
+      requestBody:
+        description: Данные для создания пользователя
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateUserRequest'
+            examples:
+              valid:
+                summary: Корректный запрос
+                value:
+                  name: Alice
+              withSpaces:
+                summary: Имя с пробелами (будут обрезаны)
+                value:
+                  name: "  Alice  "
+              unicode:
+                summary: Юникод имя
+                value:
+                  name: "Алексей"
+      responses:
+        '201':
+          description: Пользователь успешно создан
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+              example:
+                timestamp: '2026-03-05T12:00:00Z'
+                data:
+                  id: 1
+                  name: Alice
+                message: Пользователь успешно добавлен
+        '400':
+          description: Ошибка валидации данных
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                emptyName:
+                  summary: Пустое имя
+                  value:
+                    timestamp: '2026-03-05T12:00:00Z'
+                    error: имя пользователя обязательно и должно содержать хотя бы один символ
+                tooLong:
+                  summary: Слишком длинное имя
+                  value:
+                    timestamp: '2026-03-05T12:00:00Z'
+                    error: имя не должно превышать 100 символов
+                invalidJson:
+                  summary: Некорректный JSON
+                  value:
+                    timestamp: '2026-03-05T12:00:00Z'
+                    error: Некорректный JSON
+        '409':
+          description: Пользователь с таким именем уже существует
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                timestamp: '2026-03-05T12:00:00Z'
+                error: пользователь с таким именем уже существует
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+        '429':
+          $ref: '#/components/responses/RateLimitExceeded'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /user/{id}:
+    get:
+      tags:
+        - Users
+      summary: Получить пользователя по ID
+      description: |
+        Возвращает данные пользователя по его уникальному идентификатору.
+
+        **ID пользователя:**
+        - Положительное целое число
+        - Автоинкремент (1, 2, 3, ...)
+      operationId: getUserById
+      parameters:
+        - name: id
+          in: path
+          description: Уникальный идентификатор пользователя
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+          example: 1
+      responses:
+        '200':
+          description: Пользователь найден
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+              example:
+                timestamp: '2026-03-05T12:00:00Z'
+                data:
+                  id: 1
+                  name: Alice
+                  created_at: '2026-03-05T12:00:00Z'
+        '400':
+          description: Некорректный формат ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                timestamp: '2026-03-05T12:00:00Z'
+                error: Некорректный ID
+        '404':
+          description: Пользователь не найден
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                timestamp: '2026-03-05T12:00:00Z'
+                error: пользователь не найден
+        '429':
+          $ref: '#/components/responses/RateLimitExceeded'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    put:
+      tags:
+        - Users
+      summary: Обновить данные пользователя
+      description: |
+        Обновляет имя существующего пользователя.
+
+        **Требования к имени:**
+        - Обязательно (не может быть пустым)
+        - Минимум 1 символ (после удаления пробелов)
+        - Максимум 100 символов
+        - Должно быть уникальным
+
+        **Важно:** Если пользователь с указанным ID не существует, вернётся ошибка 404.
+      operationId: updateUser
+      parameters:
+        - name: id
+          in: path
+          description: Уникальный идентификатор пользователя
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+          example: 1
+      requestBody:
+        description: Новые данные пользователя
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateUserRequest'
+            examples:
+              valid:
+                summary: Корректное обновление
+                value:
+                  name: Alice Updated
+              unicode:
+                summary: Юникод имя
+                value:
+                  name: "Алексей"
+      responses:
+        '200':
+          description: Данные успешно обновлены
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+              example:
+                timestamp: '2026-03-05T12:00:00Z'
+                data:
+                  id: 1
+                  name: Alice Updated
+                message: Данные пользователя обновлены
+        '400':
+          description: Ошибка валидации данных
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                timestamp: '2026-03-05T12:00:00Z'
+                error: имя пользователя обязательно и должно содержать хотя бы один символ
+        '404':
+          description: Пользователь не найден
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                timestamp: '2026-03-05T12:00:00Z'
+                error: пользователь не найден
+        '409':
+          description: Имя уже занято другим пользователем
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                timestamp: '2026-03-05T12:00:00Z'
+                error: пользователь с таким именем уже существует
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+        '429':
+          $ref: '#/components/responses/RateLimitExceeded'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    delete:
+      tags:
+        - Users
+      summary: Удалить пользователя
+      description: |
+        Безвозвратно удаляет пользователя из базы данных.
+
+        **Важно:**
+        - Операция необратима
+        - Если пользователь не найден, вернётся ошибка 404
+      operationId: deleteUser
+      parameters:
+        - name: id
+          in: path
+          description: Уникальный идентификатор пользователя для удаления
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+          example: 1
+      responses:
+        '200':
+          description: Пользователь успешно удалён
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeleteResponse'
+              example:
+                timestamp: '2026-03-05T12:00:00Z'
+                data:
+                  id: 1
+                message: Пользователь успешно удалён
+        '400':
+          description: Некорректный формат ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                timestamp: '2026-03-05T12:00:00Z'
+                error: Некорректный ID
+        '404':
+          description: Пользователь не найден
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                timestamp: '2026-03-05T12:00:00Z'
+                error: пользователь не найден
+        '429':
+          $ref: '#/components/responses/RateLimitExceeded'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /stats/active:
+    get:
+      tags:
+        - Stats
+      summary: Получить статистику приложения
+      description: |
+        Возвращает текущую статистику приложения.
+
+        **Возвращаемые данные:**
+        - `active_connections` — количество активных подключений (заглушка, всегда 0)
+        - `total_users` — общее количество пользователей в базе
+      operationId: getStats
+      responses:
+        '200':
+          description: Успешный ответ со статистикой
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatsResponse'
+              example:
+                timestamp: '2026-03-05T12:00:00Z'
+                data:
+                  active_connections: 0
+                  total_users: 150
+        '429':
+          $ref: '#/components/responses/RateLimitExceeded'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+components:
+  schemas:
+    # ========================================================================
+    # Запросы
+    # ========================================================================
+    CreateUserRequest:
+      type: object
+      description: Данные для создания нового пользователя
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          description: Имя пользователя (уникальное, 1-100 символов)
+          minLength: 1
+          maxLength: 100
+          example: Alice
+          trim: true
+
+    UpdateUserRequest:
+      type: object
+      description: Данные для обновления пользователя
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          description: Новое имя пользователя (уникальное, 1-100 символов)
+          minLength: 1
+          maxLength: 100
+          example: Alice Updated
+          trim: true
+
+    # ========================================================================
+    # Ответы
+    # ========================================================================
+    User:
+      type: object
+      description: Модель пользователя
+      properties:
+        id:
+          type: integer
+          description: Уникальный идентификатор
+          example: 1
+          readOnly: true
+        name:
+          type: string
+          description: Имя пользователя
+          example: Alice
+        created_at:
+          type: string
+          format: date-time
+          description: Дата и время создания (ISO 8601)
+          example: '2026-03-05T12:00:00Z'
+          readOnly: true
+          pattern: '^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$'
+      required:
+        - id
+        - name
+        - created_at
+
+    UserResponse:
+      type: object
+      description: Ответ с данными пользователя
+      required:
+        - timestamp
+        - data
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+          description: Время ответа сервера (ISO 8601)
+          example: '2026-03-05T12:00:00Z'
+          pattern: '^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$'
+        data:
+          $ref: '#/components/schemas/User'
+        message:
+          type: string
+          description: Сообщение об успехе (если есть)
+          example: Пользователь успешно добавлен
+          nullable: true
+
+    UsersListResponse:
+      type: object
+      description: Ответ со списком пользователей и пагинацией
+      required:
+        - timestamp
+        - data
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+          description: Время ответа сервера (ISO 8601)
+          example: '2026-03-05T12:00:00Z'
+          pattern: '^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$'
+        data:
+          type: object
+          required:
+            - users
+            - pagination
+          properties:
+            users:
+              type: array
+              description: Список пользователей
+              items:
+                $ref: '#/components/schemas/User'
+            pagination:
+              $ref: '#/components/schemas/Pagination'
+        message:
+          type: string
+          description: Сообщение (если есть)
+          nullable: true
+
+    Pagination:
+      type: object
+      description: Информация о пагинации
+      required:
+        - page
+        - per_page
+        - total
+        - pages
+      properties:
+        page:
+          type: integer
+          description: Текущая страница
+          minimum: 1
+          example: 1
+        per_page:
+          type: integer
+          description: Записей на странице
+          minimum: 1
+          maximum: 100
+          example: 10
+        total:
+          type: integer
+          description: Общее количество записей
+          minimum: 0
+          example: 25
+        pages:
+          type: integer
+          description: Общее количество страниц
+          minimum: 1
+          example: 3
+
+    DeleteResponse:
+      type: object
+      description: Ответ после удаления пользователя
+      required:
+        - timestamp
+        - data
+        - message
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+          description: Время ответа сервера (ISO 8601)
+          example: '2026-03-05T12:00:00Z'
+          pattern: '^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$'
+        data:
+          type: object
+          required:
+            - id
+          properties:
+            id:
+              type: integer
+              description: ID удалённого пользователя
+              example: 1
+        message:
+          type: string
+          description: Сообщение об успехе
+          example: Пользователь успешно удалён
+
+    StatsResponse:
+      type: object
+      description: Ответ со статистикой приложения
+      required:
+        - timestamp
+        - data
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+          description: Время ответа сервера (ISO 8601)
+          example: '2026-03-05T12:00:00Z'
+          pattern: '^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$'
+        data:
+          type: object
+          required:
+            - active_connections
+            - total_users
+          properties:
+            active_connections:
+              type: integer
+              description: Количество активных подключений
+              minimum: 0
+              example: 0
+            total_users:
+              type: integer
+              description: Общее количество пользователей
+              minimum: 0
+              example: 150
+        message:
+          type: string
+          description: Сообщение (если есть)
+          nullable: true
+
+    HealthResponse:
+      type: object
+      description: Ответ проверки здоровья
+      required:
+        - timestamp
+        - data
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+          description: Время ответа сервера (ISO 8601)
+          example: '2026-03-05T12:00:00Z'
+          pattern: '^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$'
+        data:
+          type: object
+          required:
+            - status
+          properties:
+            status:
+              type: string
+              description: Статус сервиса
+              enum:
+                - healthy
+                - unhealthy
+                - degraded
+              example: healthy
+        message:
+          type: string
+          description: Сообщение (если есть)
+          nullable: true
+
+    # ========================================================================
+    # Ошибки
+    # ========================================================================
+    ErrorResponse:
+      type: object
+      description: Ответ с ошибкой
+      required:
+        - timestamp
+        - error
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+          description: Время ответа сервера (ISO 8601)
+          example: '2026-03-05T12:00:00Z'
+          pattern: '^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$'
+        error:
+          type: string
+          description: Описание ошибки
+          example: пользователь не найден
+
+  responses:
+    # ========================================================================
+    # Стандартные ответы об ошибках
+    # ========================================================================
+    UnsupportedMediaType:
+      description: Неверный формат Content-Type. Ожидается application/json
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            timestamp: '2026-03-05T12:00:00Z'
+            error: Unsupported Media Type. Expected application/json
+
+    RateLimitExceeded:
+      description: Превышен лимит запросов (100 в секунду). Повторите позже
+      headers:
+        Retry-After:
+          description: Количество секунд до повторной попытки
+          schema:
+            type: integer
+        X-RateLimit-Limit:
+          description: Максимальное количество запросов в секунду
+          schema:
+            type: integer
+        X-RateLimit-Remaining:
+          description: Оставшееся количество запросов
+          schema:
+            type: integer
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            timestamp: '2026-03-05T12:00:00Z'
+            error: Too Many Requests
+
+    InternalServerError:
+      description: Внутренняя ошибка сервера. Попробуйте позже
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            timestamp: '2026-03-05T12:00:00Z'
+            error: Внутренняя ошибка сервера
+
+    BadRequest:
+      description: Ошибка валидации входных данных
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            emptyName:
+              summary: Пустое имя
+              value:
+                timestamp: '2026-03-05T12:00:00Z'
+                error: имя пользователя обязательно и должно содержать хотя бы один символ
+            tooLong:
+              summary: Слишком длинное имя
+              value:
+                timestamp: '2026-03-05T12:00:00Z'
+                error: имя не должно превышать 100 символов
+            invalidJson:
+              summary: Некорректный JSON
+              value:
+                timestamp: '2026-03-05T12:00:00Z'
+                error: Некорректный JSON
+
+    NotFound:
+      description: Ресурс не найден
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            timestamp: '2026-03-05T12:00:00Z'
+            error: пользователь не найден
+
+    Conflict:
+      description: Конфликт ресурсов (дубликат)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            timestamp: '2026-03-05T12:00:00Z'
+            error: пользователь с таким именем уже существует
+
+  examples:
+    # ========================================================================
+    # Переиспользуемые примеры
+    # ========================================================================
+    UserExample:
+      summary: Пример пользователя
+      value:
+        id: 1
+        name: Alice
+        created_at: '2026-03-05T12:00:00Z'
+
+    CreateUserExample:
+      summary: Запрос на создание
+      value:
+        name: Alice
+
+    ErrorExample:
+      summary: Пример ошибки
+      value:
+        timestamp: '2026-03-05T12:00:00Z'
+        error: пользователь не найден
+
+  securitySchemes: {}
+
+# Нет аутентификации
+security: []
+
+# =============================================================================
+# Webhooks (для будущей функциональности)
+# =============================================================================
+webhooks:
+  userCreated:
+    post:
+      description: |
+        Webhook вызывается при создании нового пользователя.
+        
+        **Статус:** Запланировано в версии 2.1.0
+      requestBody:
+        description: Данные созданного пользователя
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/User'
+      responses:
+        '200':
+          description: Webhook успешно обработан
+
+  userDeleted:
+    post:
+      description: |
+        Webhook вызывается при удалении пользователя.
+        
+        **Статус:** Запланировано в версии 2.1.0
+      requestBody:
+        description: ID удалённого пользователя
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                id:
+                  type: integer
+                  example: 1
+      responses:
+        '200':
+          description: Webhook успешно обработан

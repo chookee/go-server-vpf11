@@ -1,0 +1,96 @@
+version: '3.8'
+
+# =============================================================================
+# Docker Compose для Users API
+# =============================================================================
+
+services:
+  # ---------------------------------------------------------------------------
+  # API Сервер
+  # ---------------------------------------------------------------------------
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: users-api
+    restart: unless-stopped
+    
+    # Порты
+    ports:
+      - "${API_PORT:-8080}:8080"
+    
+    # Переменные окружения
+    environment:
+      - SERVER_HOST=0.0.0.0
+      - SERVER_PORT=8080
+      - DB_PATH=/app/data/test.db
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - LOG_FILE=${LOG_FILE:-}
+      - READ_TIMEOUT=${READ_TIMEOUT:-15s}
+      - WRITE_TIMEOUT=${WRITE_TIMEOUT:-15s}
+      - IDLE_TIMEOUT=${IDLE_TIMEOUT:-60s}
+      - SHUTDOWN_TIMEOUT=${SHUTDOWN_TIMEOUT:-30s}
+      - MAX_REQUEST_BODY=${MAX_REQUEST_BODY:-1048576}
+      - DB_MAX_OPEN_CONNS=${DB_MAX_OPEN_CONNS:-25}
+      - DB_MAX_IDLE_CONNS=${DB_MAX_IDLE_CONNS:-5}
+    
+    # Тома для сохранения данных
+    volumes:
+      - api_data:/app/data
+      - ./logs:/app/logs
+    
+    # Сети
+    networks:
+      - api_network
+    
+    # Ресурсы
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
+    
+    # Проверка здоровья
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+
+  # ---------------------------------------------------------------------------
+  # Тестовый контейнер (для проверки эндпоинтов)
+  # ---------------------------------------------------------------------------
+  test:
+    build:
+      context: .
+      dockerfile: Dockerfile.test
+    container_name: users-api-test
+    depends_on:
+      api:
+        condition: service_healthy
+    environment:
+      - API_URL=http://api:8080
+    networks:
+      - api_network
+    profiles:
+      - test
+
+# -----------------------------------------------------------------------------
+# Тома
+# -----------------------------------------------------------------------------
+volumes:
+  api_data:
+    driver: local
+    name: users-api-data
+
+# -----------------------------------------------------------------------------
+# Сети
+# -----------------------------------------------------------------------------
+networks:
+  api_network:
+    driver: bridge
+    name: users-api-network

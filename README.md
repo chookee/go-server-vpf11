@@ -1,6 +1,6 @@
 # Users API
 
-[![Go Version](https://img.shields.io/github/go-mod/go-version/zerocode/users-api?logo=go)](https://go.dev/)
+[![Go Version](https://img.shields.io/github/go-mod/go-version/chookee/go-server-vpf11?logo=go)](https://go.dev/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Docker](https://img.shields.io/badge/docker-ready-blue?logo=docker)](https://www.docker.com/)
 
@@ -12,8 +12,8 @@ RESTful API для управления пользователями на **Go**
 
 ```bash
 # Клонировать репозиторий
-git clone https://github.com/zerocode/users-api.git
-cd users-api/go-server
+git clone https://github.com/chookee/go-server-vpf11.git
+cd go-server-vpf11
 
 # Установить зависимости
 go mod download
@@ -141,8 +141,8 @@ curl "http://127.0.0.1:8080/users?page=1&per_page=10"
 
 ```bash
 # Клонирование
-git clone https://github.com/zerocode/users-api.git
-cd users-api/go-server
+git clone https://github.com/chookee/go-server-vpf11.git
+cd go-server-vpf11
 
 # Установка зависимостей
 go mod download
@@ -174,7 +174,7 @@ docker-compose down
 ### Вариант 3: Go install
 
 ```bash
-go install github.com/zerocode/users-api/cmd/server@latest
+go install github.com/chookee/go-server-vpf11/cmd/server@latest
 server
 ```
 
@@ -427,8 +427,8 @@ go test -cover ./...
 
 ## 📞 Контакты
 
-- **Репозиторий:** https://github.com/zerocode/users-api
-- **Issues:** https://github.com/zerocode/users-api/issues
+- **Репозиторий:** https://github.com/chookee/go-server-vpf11
+- **Issues:** https://github.com/chookee/go-server-vpf11/issues
 - **OpenAPI:** [openapi.yaml](openapi.yaml)
 
 ---
@@ -445,7 +445,7 @@ go test -cover ./...
 
 **Users API** — быстро, надёжно, production-ready.
 
-[![Go Version](https://img.shields.io/github/go-mod/go-version/zerocode/users-api?logo=go)](https://go.dev/)
+[![Go Version](https://img.shields.io/github/go-mod/go-version/chookee/go-server-vpf11?logo=go)](https://go.dev/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 </div>

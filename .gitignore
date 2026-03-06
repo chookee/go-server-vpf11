@@ -4,14 +4,13 @@
 *.dll
 *.so
 *.dylib
-server
+/server
 server.exe
 bin/
 dist/
 
 # Go
 *.go~
-*.test
 *.out
 coverage.txt
 go.work

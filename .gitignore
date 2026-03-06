@@ -62,3 +62,8 @@ htmlcov/
 
 # Windows
 Thumbs.db
+
+# Qwen
+CONTINUITY_LEDGER.md
+CONTINUITY_PROMPT.md
+DEPLOYMENT.md
